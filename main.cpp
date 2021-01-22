@@ -1,16 +1,23 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <chrono>
 #include <filesystem>
 #include <regex>
+#include <utility>
 
 #include <mio/mio.hpp>
 
 #include "parser.hpp"
+#include "schemes/vanilla.hpp"
+#include "schemes/opt1.hpp"
 
 namespace fs = std::filesystem;
 
+std::regex const REGION_FILENAME_PATTERN(R"(([-]?\d+)\.([-]?\d+)\.bin)");
+
 [[noreturn]]
+inline
 void fatalError(char const* fmt, ...)
 {
 	va_list list;
@@ -20,8 +27,6 @@ void fatalError(char const* fmt, ...)
 
 	std::exit(EXIT_FAILURE);
 }
-
-std::regex const REGION_FILENAME_PATTERN(R"(([-]?\d+)\.([-]\d+)\.bin)");
 
 template <typename FileHandler>
 void forEachRegionFile(fs::path const& directory, FileHandler handler)
@@ -39,30 +44,91 @@ void forEachRegionFile(fs::path const& directory, FileHandler handler)
 	}
 }
 
-void onRegion(Region const& region)
+void stats(std::vector<Region> const& regions)
 {
-	// TODO: do something more interesting instead
+	std::size_t chunkCount = 0;
+	std::size_t sectionCount = 0;
+	std::size_t sectionBitDepthCounts[16] = {};
+	std::size_t size = 0;
 
-	auto chunks = 0;
-	auto sections = 0;
-
-	for(auto& chunk : region.chunks)
+	for(auto& region : regions)
 	{
-		if(!chunk)
-			continue;
-
-		++chunks;
-
-		for(auto& section : chunk->sections)
+		for(auto& chunk : region.chunks)
 		{
-			if(!section)
+			if(!chunk)
 				continue;
 
-			++sections;
+			++chunkCount;
+
+			for(auto& section : chunk->sections)
+			{
+				if(!section)
+					continue;
+
+				++sectionCount;
+				size += sizeof **section * BLOCKS_PER_SECTION;
+
+				auto palette = createPalette(*section, BLOCKS_PER_SECTION);
+				auto bits = ceillog2(palette.size);
+				++sectionBitDepthCounts[bits];
+			}
 		}
 	}
 
-	std::printf("this region has %d chunks and %d sections\n", chunks, sections);
+	std::printf("size: %.2f GiB\n", size / 1024.f / 1024.f / 1024.f);
+	std::printf("regions: %zu\n", regions.size());
+	std::printf("chunks: %zu\n", chunkCount);
+	std::printf("sections: %zu\n", sectionCount);
+	std::printf("bits per section:\n");
+
+	for(auto i = 0; i != 16; ++i)
+	{
+		if(sectionBitDepthCounts[i])
+			std::printf("\t%d: %zu\n", i, sectionBitDepthCounts[i]);
+	}
+
+	std::printf("\n");
+}
+
+template <typename Scheme>
+void benchmark(std::vector<Region> const& regions, Scheme scheme)
+{
+	auto startTime = std::chrono::high_resolution_clock::now();
+
+	std::size_t size = 0;
+
+	for(auto& region : regions)
+	{
+		scheme.beginRegion(region);
+
+		for(auto& chunk : region.chunks)
+		{
+			if(!chunk)
+				continue;
+
+			scheme.beginChunk(*chunk);
+
+			for(auto& section : chunk->sections)
+			{
+				if(!section)
+					continue;
+
+				size += scheme.section(*section);
+			}
+
+			size += scheme.endChunk();
+		}
+
+		size += scheme.endRegion();
+	}
+
+	auto endTime = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() / 1000.f;
+
+	std::printf("scheme: %s\n", scheme.name().c_str());
+	std::printf("size: %.2f MiB\n", size / 1024.f / 1024.f);
+	std::printf("time: %.2f s\n", duration);
+	std::printf("\n");
 }
 
 int main(int argc, char** argv)
@@ -72,9 +138,12 @@ int main(int argc, char** argv)
 	if(args.size() != 2)
 		fatalError("invalid args, expected %s <region-dir>\n", args[0]);
 
-	forEachRegionFile(args[1], [](fs::path const& path)
+	std::vector<mio::mmap_source> mappings;
+	std::vector<Region> regions;
+
+	forEachRegionFile(args[1], [&mappings, &regions](fs::path const& path)
 	{
-		std::printf("parsing region file '%s' ...\n", path.filename().u8string().c_str());
+		std::printf("loading region file '%s' ...\n", path.filename().u8string().c_str());
 
 		std::error_code errc;
 		auto mapping = mio::make_mmap_source(path.string(), errc);
@@ -83,6 +152,14 @@ int main(int argc, char** argv)
 			fatalError("failed to load region file '%s': %s\n", path.string().c_str(), errc.message().c_str());
 
 		auto region = parseRegion((std::uint8_t const*)mapping.data());
-		onRegion(region);
+		mappings.emplace_back(std::move(mapping));
+		regions.emplace_back(region);
 	});
+
+	std::printf("done loading regions\n");
+	std::printf("\n");
+
+	stats(regions);
+	benchmark(regions, VanillaCompressionScheme());
+	benchmark(regions, Opt1CompressionScheme());
 }
