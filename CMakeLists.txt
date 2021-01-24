@@ -5,4 +5,4 @@ set(CMAKE_CXX_STANDARD 17)
 
 include_directories(external)
 add_executable(bench main.cpp)
-target_link_libraries(bench deflate)
+target_link_libraries(bench z deflate zstd lz4 brotlienc bz2)

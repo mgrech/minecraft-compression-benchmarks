@@ -5,21 +5,20 @@
 #include <cstdint>
 #include <string>
 
-#include <libdeflate.h>
-
 #include "../bitpacking.hpp"
 #include "../palette.hpp"
+#include "../compressors/zlib.hpp"
 
 struct VanillaCompressionScheme
 {
-	libdeflate_compressor* _compressor;
+	ZlibCompressor _compressor;
 	std::vector<std::uint8_t> _chunkBuffer;
+	std::size_t _bufferUsed = 0;
 
 	VanillaCompressionScheme()
-	: _compressor(libdeflate_alloc_compressor(6))
-	{
-		_chunkBuffer.reserve(BLOCKS_PER_SECTION * SECTIONS_PER_CHUNK);
-	}
+	: _compressor(-1)
+	, _chunkBuffer(BLOCKS_PER_SECTION * SECTIONS_PER_CHUNK)
+	{}
 
 	std::string name() const
 	{
@@ -41,9 +40,9 @@ struct VanillaCompressionScheme
 
 	std::size_t endChunk()
 	{
-		std::uint8_t compressedBuffer[BLOCKS_PER_SECTION * SECTIONS_PER_CHUNK];
-		auto size = libdeflate_zlib_compress(_compressor, _chunkBuffer.data(), _chunkBuffer.size(), compressedBuffer, sizeof compressedBuffer);
-		_chunkBuffer.clear();
+		std::uint8_t compressedBuffer[8 * BLOCKS_PER_SECTION * SECTIONS_PER_CHUNK];
+		auto size = _compressor.compress(_chunkBuffer.data(), _bufferUsed, compressedBuffer, sizeof compressedBuffer);
+		_bufferUsed = 0;
 		return size;
 	}
 
@@ -54,9 +53,8 @@ struct VanillaCompressionScheme
 		std::uint16_t buf[BLOCKS_PER_SECTION];
 		palettize(palette, data, BLOCKS_PER_SECTION, buf);
 
-		auto buf2 = (std::uint8_t*)buf;
-		auto packedSize = bitpackVanilla(palette.size, buf, BLOCKS_PER_SECTION, buf2);
-		_chunkBuffer.insert(_chunkBuffer.end(), buf2, buf2 + packedSize);
+		auto size = bitpackVanilla(palette.size, buf, BLOCKS_PER_SECTION, _chunkBuffer.data() + _bufferUsed);
+		_bufferUsed += size;
 
 		return 0;
 	}

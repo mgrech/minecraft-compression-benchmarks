@@ -8,9 +8,17 @@
 
 #include <mio/mio.hpp>
 
+#include "compressors/null.hpp"
+#include "compressors/brotli.hpp"
+#include "compressors/bzip2.hpp"
+#include "compressors/libdeflate.hpp"
+#include "compressors/lz4.hpp"
+#include "compressors/zlib.hpp"
+#include "compressors/zstd.hpp"
 #include "parser.hpp"
 #include "schemes/vanilla.hpp"
 #include "schemes/opt1.hpp"
+#include "schemes/opt2.hpp"
 
 namespace fs = std::filesystem;
 
@@ -162,4 +170,23 @@ int main(int argc, char** argv)
 	stats(regions);
 	benchmark(regions, VanillaCompressionScheme());
 	benchmark(regions, Opt1CompressionScheme());
+
+	benchmark(regions, Opt2CompressionScheme<NullCompressor>());
+
+	//for(int i = 1; i <= 250; i += 10)
+	//	benchmark(regions, Opt2CompressionScheme<Bzip2Compressor>(i));
+
+	for(int i = 0; i <= 8; ++i)
+		benchmark(regions, Opt2CompressionScheme<BrotliCompressor>(i));
+
+	for(int i = 1; i <= 8; ++i)
+		benchmark(regions, Opt2CompressionScheme<ZlibCompressor>(i));
+
+	for(int i = 1; i <= 9; ++i)
+		benchmark(regions, Opt2CompressionScheme<LibDeflateCompressor>(i));
+
+	for(int i = 0; i <= 12; ++i)
+		benchmark(regions, Opt2CompressionScheme<ZstdCompressor>(i));
+
+	benchmark(regions, Opt2CompressionScheme<Lz4Compressor>(0));
 }
