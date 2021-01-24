@@ -43,7 +43,7 @@ std::size_t bitpack16to7(std::uint16_t const* in, std::size_t count, std::uint8_
 	}
 
 	if(remainingCount == 0)
-		return loopCount;
+		return loopCount * 8;
 
 	std::uint64_t final = 0;
 
@@ -51,7 +51,7 @@ std::size_t bitpack16to7(std::uint16_t const* in, std::size_t count, std::uint8_
 		final |= (std::uint64_t)in[i] << (i * 7);
 
 	std::memcpy(out, &final, sizeof final);
-	return loopCount + sizeof final;
+	return loopCount * 8 + sizeof final;
 }
 
 inline
@@ -84,7 +84,7 @@ std::size_t bitpack16to6(std::uint16_t const* in, std::size_t count, std::uint8_
 	}
 
 	if(remainingCount == 0)
-		return loopCount;
+		return loopCount * 8;
 
 	std::uint64_t final = 0;
 
@@ -92,7 +92,7 @@ std::size_t bitpack16to6(std::uint16_t const* in, std::size_t count, std::uint8_
 		final |= (std::uint64_t)in[i] << (i * 6);
 
 	std::memcpy(out, &final, sizeof final);
-	return loopCount + sizeof final;
+	return loopCount * 8 + sizeof final;
 }
 
 inline
@@ -127,7 +127,7 @@ std::size_t bitpack16to5(std::uint16_t const* in, std::size_t count, std::uint8_
 	}
 
 	if(remainingCount == 0)
-		return loopCount;
+		return loopCount * 8;
 
 	std::uint64_t final = 0;
 
@@ -135,7 +135,7 @@ std::size_t bitpack16to5(std::uint16_t const* in, std::size_t count, std::uint8_
 		final |= (std::uint64_t)in[i] << (i * 5);
 
 	std::memcpy(out, &final, sizeof final);
-	return loopCount + sizeof final;
+	return loopCount * 8 + sizeof final;
 }
 
 inline
@@ -198,7 +198,7 @@ std::size_t bitpack16to3(std::uint16_t const* in, std::size_t count, std::uint8_
 	}
 
 	if(remainingCount == 0)
-		return loopCount;
+		return loopCount * 8;
 
 	std::uint64_t final = 0;
 
@@ -206,7 +206,7 @@ std::size_t bitpack16to3(std::uint16_t const* in, std::size_t count, std::uint8_
 		final |= (std::uint64_t)in[i] << (i * 3);
 
 	std::memcpy(out, &final, sizeof final);
-	return loopCount + sizeof final;
+	return loopCount * 8  + sizeof final;
 }
 
 inline
@@ -282,7 +282,7 @@ std::size_t bitpackOptimized(std::size_t distincts, std::uint16_t const* in, std
 {
 	switch(ceillog2(distincts))
 	{
-		// if there is only a single distinct value, we don't need to store anything
+	// if there is only a single distinct value, we don't need to store anything
 	case 0: return 0;
 
 	case 1: return bitpack16to1(in, count, out);
