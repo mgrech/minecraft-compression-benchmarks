@@ -52,11 +52,24 @@ void forEachRegionFile(fs::path const& directory, FileHandler handler)
 	}
 }
 
+std::size_t countNonAirBlocks(std::uint16_t const* section)
+{
+	std::size_t result = 0;
+
+	for(std::size_t i = 0; i != BLOCKS_PER_SECTION; ++i)
+		if(section[i])
+			++result;
+
+	return result;
+}
+
 void stats(std::vector<Region> const& regions)
 {
 	std::size_t chunkCount = 0;
 	std::size_t sectionCount = 0;
-	std::size_t sectionBitDepthCounts[16] = {};
+	std::size_t sectionBitDepthCounts[12] = {};
+	std::size_t blockCountBitDepths[13] = {};
+	std::size_t blockCountBitDepthsWith4BitId[13] = {};
 	std::size_t size = 0;
 
 	for(auto& region : regions)
@@ -77,8 +90,14 @@ void stats(std::vector<Region> const& regions)
 				size += sizeof **section * BLOCKS_PER_SECTION;
 
 				auto palette = createPalette(*section, BLOCKS_PER_SECTION);
-				auto bits = ceillog2(palette.size);
-				++sectionBitDepthCounts[bits];
+				auto paletteBits = ceillog2(palette.size);
+				++sectionBitDepthCounts[paletteBits];
+
+				auto nonAirBlockBits = ceillog2(countNonAirBlocks(*section));
+				++blockCountBitDepths[nonAirBlockBits];
+
+				if(paletteBits <= 4)
+					++blockCountBitDepthsWith4BitId[nonAirBlockBits];
 			}
 		}
 	}
@@ -89,10 +108,26 @@ void stats(std::vector<Region> const& regions)
 	std::printf("sections: %zu\n", sectionCount);
 	std::printf("bits per section:\n");
 
-	for(auto i = 0; i != 16; ++i)
+	for(auto i = 0; i != sizeof sectionBitDepthCounts / sizeof *sectionBitDepthCounts; ++i)
 	{
 		if(sectionBitDepthCounts[i])
 			std::printf("\t%d: %zu\n", i, sectionBitDepthCounts[i]);
+	}
+
+	std::printf("block count bits per section:\n");
+
+	for(auto i = 0; i != sizeof blockCountBitDepths / sizeof *blockCountBitDepths; ++i)
+	{
+		if(blockCountBitDepths[i])
+			std::printf("\t%d: %zu\n", i, blockCountBitDepths[i]);
+	}
+
+	std::printf("block count bits per section with 4 bit IDs:\n");
+
+	for(auto i = 0; i != sizeof blockCountBitDepthsWith4BitId / sizeof *blockCountBitDepthsWith4BitId; ++i)
+	{
+		if(blockCountBitDepthsWith4BitId[i])
+			std::printf("\t%d: %zu\n", i, blockCountBitDepthsWith4BitId[i]);
 	}
 
 	std::printf("\n");
