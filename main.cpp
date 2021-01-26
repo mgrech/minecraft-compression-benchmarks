@@ -89,7 +89,7 @@ void stats(std::vector<Region> const& regions)
 				++sectionCount;
 				size += sizeof **section * BLOCKS_PER_SECTION;
 
-				auto palette = createPalette(*section, BLOCKS_PER_SECTION);
+				auto palette = createPalette(*section, BLOCKS_PER_SECTION, true);
 				auto paletteBits = ceillog2(palette.size);
 				++sectionBitDepthCounts[paletteBits];
 
