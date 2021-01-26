@@ -48,10 +48,10 @@ struct Opt1CompressionScheme
 
 	std::size_t section(std::uint16_t const* data)
 	{
-		auto palette = createPalette(data, BLOCKS_PER_SECTION);
+		auto palette = createPalette(data, BLOCKS_PER_SECTION, false);
 
 		std::uint16_t buf[BLOCKS_PER_SECTION];
-		palettize(palette, data, BLOCKS_PER_SECTION, buf);
+		palettize(palette, data, BLOCKS_PER_SECTION, buf, false);
 
 		auto size = bitpackOptimized(palette.size, buf, BLOCKS_PER_SECTION, _chunkBuffer.data() + _bufferUsed);
 		_bufferUsed += size;

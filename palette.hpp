@@ -11,6 +11,12 @@ struct Palette
 {
 	std::uint16_t size = 0;
 	std::uint16_t values[256];
+
+	Palette()
+	{
+		for(auto& value : values)
+			value = 0xffff;
+	}
 };
 
 inline
@@ -67,11 +73,11 @@ bool tryCreatePaletteVectorized(std::uint16_t const* data, std::size_t count, Pa
 }
 
 inline
-Palette createPalette(std::uint16_t const* data, std::size_t count)
+Palette createPalette(std::uint16_t const* data, std::size_t count, bool vectorized)
 {
 	Palette palette;
 
-	if(tryCreatePaletteVectorized(data, count, &palette))
+	if(vectorized && tryCreatePaletteVectorized(data, count, &palette))
 		return palette;
 
 	auto p = palette.values;
@@ -100,8 +106,42 @@ Palette createPalette(std::uint16_t const* data, std::size_t count)
 }
 
 inline
-void palettize(Palette const& palette, std::uint16_t const* in, std::size_t count, std::uint16_t* out)
+void palettizeVectorized(Palette const& palette, std::uint16_t const* in, std::size_t count, std::uint16_t* out)
 {
+	auto p = (__m256i*)palette.values;
+	__m256i palette0 = _mm256_loadu_si256(p);
+	__m256i palette1 = _mm256_loadu_si256(p + 1);
+	__m256i palette2 = _mm256_loadu_si256(p + 2);
+	__m256i palette3 = _mm256_loadu_si256(p + 3);
+
+	for(std::size_t i = 0; i != count;)
+	{
+		auto value = in[i];
+
+		auto next = _mm256_set1_epi16(value);
+		auto mask0 = _mm256_movemask_epi8(_mm256_cmpeq_epi16(palette0, next));
+		auto mask1 = _mm256_movemask_epi8(_mm256_cmpeq_epi16(palette1, next));
+		auto mask2 = _mm256_movemask_epi8(_mm256_cmpeq_epi16(palette2, next));
+		auto mask3 = _mm256_movemask_epi8(_mm256_cmpeq_epi16(palette3, next));
+
+		auto idx0 = mask0 == 0 ? 0 : __builtin_ctz(mask0) / 2;
+		auto idx1 = mask1 == 0 ? 0 : __builtin_ctz(mask1) / 2 + 16;
+		auto idx2 = mask2 == 0 ? 0 : __builtin_ctz(mask2) / 2 + 32;
+		auto idx3 = mask3 == 0 ? 0 : __builtin_ctz(mask3) / 2 + 48;
+
+		std::uint16_t index = idx0 | idx1 | idx2 | idx3;
+
+		do out[i++] = index;
+		while(i != count && in[i] == value);
+	}
+}
+
+inline
+void palettize(Palette const& palette, std::uint16_t const* in, std::size_t count, std::uint16_t* out, bool vectorize)
+{
+	if(vectorize && palette.size <= 64)
+		return palettizeVectorized(palette, in, count, out);
+
 	auto begin = palette.values;
 	auto end = begin + palette.size;
 

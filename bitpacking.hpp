@@ -24,7 +24,7 @@ std::size_t bitpack16to7(std::uint16_t const* in, std::size_t count, std::uint8_
 
 	for(std::size_t i = 0; i != loopCount; ++i)
 	{
-		auto block = in + 12 * i;
+		auto block = in + 9 * i;
 		auto i0 = (std::uint64_t)block[0];
 		auto i1 = (std::uint64_t)block[1];
 		auto i2 = (std::uint64_t)block[2];
@@ -40,6 +40,7 @@ std::size_t bitpack16to7(std::uint16_t const* in, std::size_t count, std::uint8_
 		          | (i8 << 56);
 
 		std::memcpy(out, &next, sizeof next);
+		out += sizeof next;
 	}
 
 	if(remainingCount == 0)
@@ -64,7 +65,7 @@ std::size_t bitpack16to6(std::uint16_t const* in, std::size_t count, std::uint8_
 
 	for(std::size_t i = 0; i != loopCount; ++i)
 	{
-		auto block = in + 12 * i;
+		auto block = in + 10 * i;
 		auto i0 = (std::uint64_t)block[0];
 		auto i1 = (std::uint64_t)block[1];
 		auto i2 = (std::uint64_t)block[2];
@@ -81,6 +82,7 @@ std::size_t bitpack16to6(std::uint16_t const* in, std::size_t count, std::uint8_
 		          | (i8 << 48) | (i9 << 54);
 
 		std::memcpy(out, &next, sizeof next);
+		out += sizeof next;
 	}
 
 	if(remainingCount == 0)
@@ -124,6 +126,7 @@ std::size_t bitpack16to5(std::uint16_t const* in, std::size_t count, std::uint8_
 		          | (i8 << 40) | (i9 << 45) | (i10 << 50) | (i11 << 55);
 
 		std::memcpy(out, &next, sizeof next);
+		out += sizeof next;
 	}
 
 	if(remainingCount == 0)
@@ -195,6 +198,7 @@ std::size_t bitpack16to3(std::uint16_t const* in, std::size_t count, std::uint8_
 			  | (i20 << 60);
 
 		std::memcpy(out, &next, sizeof next);
+		out += sizeof next;
 	}
 
 	if(remainingCount == 0)
@@ -217,10 +221,10 @@ std::size_t bitpack16to2(std::uint16_t const* in, std::size_t count, std::uint8_
 
 	for(std::size_t i = 0; i != count; ++i)
 	{
-		auto i0 = (std::uint8_t)in[2 * i];
-		auto i1 = (std::uint8_t)in[2 * i + 1];
-		auto i2 = (std::uint8_t)in[2 * i + 2];
-		auto i3 = (std::uint8_t)in[2 * i + 3];
+		auto i0 = (std::uint8_t)in[4 * i];
+		auto i1 = (std::uint8_t)in[4 * i + 1];
+		auto i2 = (std::uint8_t)in[4 * i + 2];
+		auto i3 = (std::uint8_t)in[4 * i + 3];
 		out[i] = i0 | (i1 << 2) | (i2 << 4) | (i3 << 6);
 	}
 
@@ -235,14 +239,14 @@ std::size_t bitpack16to1(std::uint16_t const* in, std::size_t count, std::uint8_
 
 	for(std::size_t i = 0; i != count; ++i)
 	{
-		auto i0 = (std::uint8_t)in[2 * i];
-		auto i1 = (std::uint8_t)in[2 * i + 1];
-		auto i2 = (std::uint8_t)in[2 * i + 2];
-		auto i3 = (std::uint8_t)in[2 * i + 3];
-		auto i4 = (std::uint8_t)in[2 * i + 4];
-		auto i5 = (std::uint8_t)in[2 * i + 5];
-		auto i6 = (std::uint8_t)in[2 * i + 6];
-		auto i7 = (std::uint8_t)in[2 * i + 7];
+		auto i0 = (std::uint8_t)in[8 * i];
+		auto i1 = (std::uint8_t)in[8 * i + 1];
+		auto i2 = (std::uint8_t)in[8 * i + 2];
+		auto i3 = (std::uint8_t)in[8 * i + 3];
+		auto i4 = (std::uint8_t)in[8 * i + 4];
+		auto i5 = (std::uint8_t)in[8 * i + 5];
+		auto i6 = (std::uint8_t)in[8 * i + 6];
+		auto i7 = (std::uint8_t)in[8 * i + 7];
 		out[i] = i0 | (i1 << 1) | (i2 << 2) | (i3 << 3) | (i4 << 4) | (i5 << 5) | (i6 << 6) | (i7 << 7);
 	}
 
